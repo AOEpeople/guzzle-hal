@@ -1,0 +1,21 @@
+{
+    "name": "aoe/hateoas",
+    "authors": [
+        {
+            "name": "Kevin Schu",
+            "email": "kevin.schu@aoe.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "guzzlehttp/guzzle": "^6.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aoe\\Hateoas\\": "src/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^4.8"
+    }
+}

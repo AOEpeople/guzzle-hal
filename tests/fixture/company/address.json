@@ -1,0 +1,10 @@
+{
+    "street": "Kirchgasse 6",
+    "zip": "65185",
+    "city": "Wiesbaden",
+    "_links": {
+        "self": {
+            "href": "/company/address.json"
+        }
+    }
+}

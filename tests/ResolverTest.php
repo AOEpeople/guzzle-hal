@@ -7,33 +7,39 @@ use GuzzleHttp\Psr7\Response;
 class ResolverTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @see http://stateless.co/hal_specification.html
-     *
      * @test
      */
-    public function shouldReturnResponse()
+    public function shouldDoNothingOnInvalidJson()
     {
         /** @var Client|\PHPUnit_Framework_MockObject_MockObject $client */
         $client = $this->getMockBuilder(Client::class)
             ->disableOriginalConstructor()
             ->getMock();
 
-        $client->expects($this->any())->method('request')->will($this->returnValueMap([
-            ['GET', '/foo/bar', [], $this->response(['title' => '/foo/bar'])],
-            ['GET', '/foo/baz', [], $this->response(['title' => '/foo/baz'])]
-        ]));
-
-        $response = new Response(200, ['X-Custom' => '1'], json_encode([
-            'title' => 'test',
-            '_links' => [
-                'bar' => [
-                    'href' => '/foo/bar',
-                    'method' => 'GET'
-                ]
-            ]
-        ]), '1.2', 'everything went fine');
+        $response = new Response(200, [], 'this is not a valid json');
 
         $resolver = new Resolver($client);
+        $this->assertSame($response, $resolver->resolve($response));
+    }
+
+    /**
+     * @see http://stateless.co/hal_specification.html
+     *
+     * @test
+     *
+     * @return Response
+     */
+    public function shouldReturnResponse()
+    {
+        $response = new Response(
+            200,
+            ['X-Custom' => '1'],
+            file_get_contents(__DIR__ . '/fixture/company.json'),
+            '1.2',
+            'everything went fine'
+        );
+
+        $resolver = new Resolver($this->client());
         $resolvedResponse = $resolver->resolve($response);
         $this->assertInstanceOf(Response::class, $resolvedResponse);
         return $resolvedResponse;
@@ -45,10 +51,11 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
      * @depends shouldReturnResponse
      * @test
      */
-    public function shouldKeepOriginalProperty(Response $response)
+    public function shouldKeepOriginalProperties(Response $response)
     {
         $actual = json_decode($response->getBody());
-        $this->assertSame('test', $actual->title);
+        $this->assertSame('AOE GmbH', $actual->name);
+        $this->assertSame('www.aoe.com', $actual->homepage);
     }
 
     /**
@@ -57,10 +64,23 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
      * @depends shouldReturnResponse
      * @test
      */
-    public function shouldHaveEmbeddedBar(Response $response)
+    public function shouldHaveEmbeddedObject(Response $response)
     {
         $actual = json_decode($response->getBody());
-        $this->assertSame('/foo/bar', $actual->_embedded->bar->title);
+        $this->assertSame('Kirchgasse 6', $actual->_embedded->address->street);
+    }
+
+    /**
+     * @param Response $response
+     *
+     * @depends shouldReturnResponse
+     * @test
+     */
+    public function shouldHaveEmbeddedArray(Response $response)
+    {
+        $actual = json_decode($response->getBody());
+        $this->assertSame('Kevin Schu', $actual->_embedded->employees[0]->name);
+        $this->assertSame('Bilal Arslan', $actual->_embedded->employees[1]->name);
     }
 
     /**
@@ -72,8 +92,9 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
     public function shouldKeepLinks(Response $response)
     {
         $actual = json_decode($response->getBody());
-        $this->assertSame('/foo/bar', $actual->_links->bar->href);
-        $this->assertSame('GET', $actual->_links->bar->method);
+        $this->assertSame('/company/address.json', $actual->_links->address->href);
+        $this->assertSame('/company/employees.json', $actual->_links->employees->href);
+        $this->assertSame('/company/customers.json', $actual->_links->customers->href);
     }
 
     /**
@@ -121,6 +142,49 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @test
+     *
+     * @return Response
+     */
+    public function shouldPassOptions()
+    {
+        /** @var Client|\PHPUnit_Framework_MockObject_MockObject $client */
+        $client = $this->getMockBuilder(Client::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $client->expects($this->once())->method('request')->with(
+            'GET',
+            '/company/address.json',
+            ['query' => ['foo' => 'bar']]
+        )->will($this->returnValue(
+            $this->response(file_get_contents(__DIR__ . '/fixture/company/address.json'))
+        ));
+        $response = new Response(
+            200,
+            ['X-Custom' => '1'],
+            file_get_contents(__DIR__ . '/fixture/company.json'),
+            '1.2',
+            'everything went fine'
+        );
+        $resolver = new Resolver($client, ['links' => ['address' => ['query' => ['foo' => 'bar']]]]);
+        return $resolver->resolve($response);
+    }
+
+    /**
+     * @param Response $response
+     *
+     * @depends shouldPassOptions
+     * @test
+     */
+    public function shouldOnlyResolveLinksSetInOptions(Response $response)
+    {
+        $actual = json_decode($response->getBody());
+        $this->assertTrue(isset($actual->_embedded->address));
+        $this->assertFalse(isset($actual->_embedded->employees));
+        $this->assertFalse(isset($actual->_embedded->customers));
+    }
+
+    /**
      * @param string $body
      * @param int $code
      * @param array $headers
@@ -128,6 +192,24 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
      */
     private function response($body, $code = 200, array $headers = [])
     {
-        return new Response(200, $headers, json_encode($body));
+        return new Response($code, $headers, $body);
+    }
+
+    /**
+     * @return Client|\PHPUnit_Framework_MockObject_MockObject
+     */
+    public function client()
+    {
+        /** @var Client|\PHPUnit_Framework_MockObject_MockObject $client */
+        $client = $this->getMockBuilder(Client::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $client->expects($this->exactly(3))->method('request')->will($this->returnCallback(
+            function ($method, $uri = null, array $options = []) {
+                $json = file_get_contents(__DIR__ . '/fixture/' . $uri);
+                return $this->response($json);
+            }
+        ));
+        return $client;
     }
 }

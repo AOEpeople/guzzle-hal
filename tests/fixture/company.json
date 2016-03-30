@@ -1,0 +1,18 @@
+{
+    "name": "AOE GmbH",
+    "homepage": "www.aoe.com",
+    "_links": {
+        "self": {
+            "href": "/company.json"
+        },
+        "address": {
+            "href": "/company/address.json"
+        },
+        "employees": {
+            "href": "/company/employees.json"
+        },
+        "customers": {
+            "href": "/company/customers.json"
+        }
+    }
+}

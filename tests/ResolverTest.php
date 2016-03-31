@@ -187,6 +187,41 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @see http://stateless.co/hal_specification.html
+     *
+     * @test
+     *
+     * @return Response
+     */
+    public function shouldReturnArrayResponse()
+    {
+        $response = new Response(
+            200,
+            ['X-Custom' => '1'],
+            file_get_contents(__DIR__ . '/fixture/companies.json'),
+            '1.2',
+            'everything went fine'
+        );
+
+        $resolver = new Resolver($this->client(1));
+        $resolvedResponse = $resolver->resolve($response);
+        $this->assertInstanceOf(Response::class, $resolvedResponse);
+        return $resolvedResponse;
+    }
+
+    /**
+     * @param Response $response
+     *
+     * @depends shouldReturnArrayResponse
+     * @test
+     */
+    public function shouldResolveArrayResponse(Response $response)
+    {
+        $actual = json_decode($response->getBody());
+        $this->assertSame('AOE GmbH', $actual[0]->_embedded->company->name);
+    }
+
+    /**
      * @param string $body
      * @param int $code
      * @param array $headers
@@ -198,15 +233,16 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @param int $calls
      * @return Client|\PHPUnit_Framework_MockObject_MockObject
      */
-    public function client()
+    public function client($calls = 3)
     {
         /** @var Client|\PHPUnit_Framework_MockObject_MockObject $client */
         $client = $this->getMockBuilder(Client::class)
             ->disableOriginalConstructor()
             ->getMock();
-        $client->expects($this->exactly(3))->method('request')->will($this->returnCallback(
+        $client->expects($this->exactly($calls))->method('request')->will($this->returnCallback(
             function ($method, $uri = null, array $options = []) {
                 $json = file_get_contents(__DIR__ . '/fixture/' . $uri);
                 return $this->response($json);

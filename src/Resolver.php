@@ -38,26 +38,12 @@ class Resolver
             return $response;
         }
 
-        foreach ($res as $rel => $links) {
-            if ($rel === 'links' || $rel === '_links') {
-                foreach ($links as $target => $link) {
-                    if ($target !== 'self' && isset($link->href)) {
-                        if (!$this->isTargetResolvable($target)) {
-                            continue;
-                        }
-                        if (!isset($res->_embedded)) {
-                            $res->_embedded = new \stdClass();
-                        }
-                        if (isset($res->_embedded->$target)) {
-                            continue;
-                        }
-                        $tmp = $this->request($target, $link);
-                        /** @todo support recursion (be careful of circular dependencies) */
-                        //$tmp = $this->resolve($tmp);
-                        $res->_embedded->$target = json_decode($tmp->getBody());
-                    }
-                }
+        if (is_array($res)) {
+            foreach ($res as $resource) {
+                $this->resolveResource($resource);
             }
+        } else {
+            $this->resolveResource($res);
         }
 
         return new Response(
@@ -67,6 +53,34 @@ class Resolver
             $response->getProtocolVersion(),
             $response->getReasonPhrase()
         );
+    }
+
+    /**
+     * @param $resource
+     */
+    private function resolveResource($resource)
+    {
+        foreach ($resource as $rel => $links) {
+            if ($rel === 'links' || $rel === '_links') {
+                foreach ($links as $target => $link) {
+                    if ($target !== 'self' && isset($link->href)) {
+                        if (!$this->isTargetResolvable($target)) {
+                            continue;
+                        }
+                        if (!isset($resource->_embedded)) {
+                            $resource->_embedded = new \stdClass();
+                        }
+                        if (isset($resource->_embedded->$target)) {
+                            continue;
+                        }
+                        $tmp = $this->request($target, $link);
+                        /** @todo support recursion (be careful of circular dependencies) */
+                        //$tmp = $this->resolve($tmp);
+                        $resource->_embedded->$target = json_decode($tmp->getBody());
+                    }
+                }
+            }
+        }
     }
 
     /**

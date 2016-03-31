@@ -1,0 +1,9 @@
+[
+    {
+        "_links": {
+            "company": {
+                "href": "/company.json"
+            }
+        }
+    }
+]

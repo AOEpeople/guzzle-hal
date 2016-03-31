@@ -68,6 +68,8 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
     {
         $actual = json_decode($response->getBody());
         $this->assertSame('Kirchgasse 6', $actual->_embedded->address->street);
+        $this->assertSame('65185', $actual->_embedded->address->zip);
+        $this->assertSame('Wiesbaden', $actual->_embedded->address->city);
     }
 
     /**

@@ -15,16 +15,16 @@ class Resolver
     /**
      * @var array
      */
-    private $options = [];
+    private $config = [];
 
     /**
      * @param Client $client
-     * @param array $options
+     * @param array $config
      */
-    public function __construct(Client $client, array $options = [])
+    public function __construct(Client $client, array $config = [])
     {
         $this->client = $client;
-        $this->options = $options;
+        $this->config = $config;
     }
 
     /**
@@ -89,10 +89,10 @@ class Resolver
      */
     private function isTargetResolvable($target)
     {
-        if (!isset($this->options['links'])) {
+        if (!isset($this->config['links'])) {
             return true;
         }
-        return is_array($this->options['links']) && isset($this->options['links'][$target]);
+        return is_array($this->config['links']) && isset($this->config['links'][$target]);
     }
 
     /**
@@ -101,8 +101,8 @@ class Resolver
      */
     private function getTargetClientRequestOptions($target)
     {
-        if (isset($this->options['links']) && isset($this->options['links'][$target])) {
-            return $this->options['links'][$target];
+        if (isset($this->config['links']) && isset($this->config['links'][$target])) {
+            return $this->config['links'][$target];
         }
         return [];
     }

@@ -56,6 +56,16 @@ class Resolver
     }
 
     /**
+     * @param array $config
+     */
+    public function addConfig(array $config)
+    {
+        foreach($config as $key => $value) {
+            $this->config[$key] = $value;
+        }
+    }
+
+    /**
      * @param $resource
      */
     private function resolveResource($resource)

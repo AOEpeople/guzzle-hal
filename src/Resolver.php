@@ -61,16 +61,6 @@ class Resolver
      */
     public function addConfig(array $config)
     {
-        foreach($config as $key => $value) {
-            $this->config[$key] = $value;
-        }
-    }
-
-    /**
-     * @param array $config
-     */
-    public function addConfig(array $config)
-    {
         foreach ($config as $key => $value) {
             $this->config[$key] = $value;
         }

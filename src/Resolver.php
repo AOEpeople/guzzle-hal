@@ -29,9 +29,10 @@ class Resolver
 
     /**
      * @param ResponseInterface $response
+     * @param array $resolved
      * @return Response
      */
-    public function resolve(ResponseInterface $response)
+    public function resolve(ResponseInterface $response, array $resolved = [])
     {
         $res = json_decode($response->getBody());
         if (null === $res) {
@@ -40,10 +41,10 @@ class Resolver
 
         if (is_array($res)) {
             foreach ($res as $resource) {
-                $this->resolveResource($resource);
+                $this->resolveResource($resource, $resolved);
             }
         } else {
-            $this->resolveResource($res);
+            $this->resolveResource($res, $resolved);
         }
 
         return new Response(
@@ -66,32 +67,86 @@ class Resolver
     }
 
     /**
-     * @param $resource
+     * @param array $config
      */
-    private function resolveResource($resource)
+    public function addConfig(array $config)
+    {
+        foreach ($config as $key => $value) {
+            $this->config[$key] = $value;
+        }
+    }
+
+    /**
+     * @param $resource
+     * @param array $resolved
+     */
+    private function resolveResource($resource, array $resolved = [])
     {
         foreach ($resource as $rel => $links) {
             if ($rel === 'links' || $rel === '_links') {
                 foreach ($links as $target => $link) {
-                    if ($target !== 'self' && isset($link->href)) {
-                        if (!$this->isTargetResolvable($target)) {
-                            continue;
+                    if (!$this->isTargetResolvable($target)) {
+                        continue;
+                    }
+                    if (!isset($resource->_embedded)) {
+                        $resource->_embedded = new \stdClass();
+                    }
+                    if (isset($resource->_embedded->$target)) {
+                        continue;
+                    }
+                    if ($target !== 'self') {
+                        if (is_array($link)) {
+                            foreach ($link as $linkItem) {
+                                $this->resolveLink($resource, $resolved, $target, $linkItem, $links);
+                            }
+                        } else {
+                            $this->resolveLink($resource, $resolved, $target, $link, $links);
                         }
-                        if (!isset($resource->_embedded)) {
-                            $resource->_embedded = new \stdClass();
-                        }
-                        if (isset($resource->_embedded->$target)) {
-                            continue;
-                        }
-                        $tmp = $this->request($target, $link);
-                        /** @todo support recursion (be careful of circular dependencies) */
-                        //$tmp = $this->resolve($tmp);
-                        $resource->_embedded->$target = json_decode($tmp->getBody());
                     }
                 }
             }
         }
     }
+
+    /**
+     * @param $resource
+     * @param array $resolved
+     * @param $target
+     * @param $link
+     * @param $links
+     */
+    private function resolveLink($resource, array $resolved, $target, $link, $links)
+    {
+        if (!isset($link->href)) {
+            return;
+        }
+        $tmp = $this->request($target, $link);
+
+        if ($this->isRecursiveEnabled()) {
+            /** @todo support recursion (be careful of circular dependencies) */
+            if (!$this->isAlreadyResolved($link->href, $resolved)) {
+                $resolved = array_merge($resolved, (array)$links);
+                $tmp = $this->resolve($tmp, $resolved);
+            }
+        }
+        $resource->_embedded->$target = json_decode($tmp->getBody());
+    }
+
+    /**
+     * @param string $href
+     * @param array $resolved
+     * @return bool
+     */
+    private function isAlreadyResolved($href, array $resolved)
+    {
+        foreach ($resolved as $resolve) {
+            if ($resolve->href === $href) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     /**
      * @param string $target
@@ -113,10 +168,32 @@ class Resolver
      */
     private function isTargetResolvable($target)
     {
-        if (!isset($this->config['links'])) {
+        if (!isset($this->config['links']) || !$this->isTargetFilterEnabled()) {
             return true;
         }
         return is_array($this->config['links']) && isset($this->config['links'][$target]);
+    }
+
+    /**
+     * @return bool
+     */
+    private function isTargetFilterEnabled()
+    {
+        if (!isset($this->config['filter'])) {
+            return true;
+        }
+        return (boolean)$this->config['filter'];
+    }
+
+    /**
+     * @return bool
+     */
+    private function isRecursiveEnabled()
+    {
+        if (!isset($this->config['recursive'])) {
+            return false;
+        }
+        return (boolean)$this->config['recursive'];
     }
 
     /**

@@ -222,6 +222,28 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @test
+     *
+     * @return Response
+     */
+    public function shouldRecursiveWithoutEndlessLoop()
+    {
+        $response = new Response(
+            200,
+            ['X-Custom' => '1'],
+            file_get_contents(__DIR__ . '/fixture/company.json'),
+            '1.2',
+            'everything went fine'
+        );
+
+        // @todo 5 is too many - should calles exactly 3 times
+        $resolver = new Resolver($this->client(5), ['recursive' => true]);
+        $resolvedResponse = $resolver->resolve($response);
+        $this->assertInstanceOf(Response::class, $resolvedResponse);
+        return $resolvedResponse;
+    }
+
+    /**
      * @param string $body
      * @param int $code
      * @param array $headers

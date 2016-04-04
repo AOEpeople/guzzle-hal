@@ -1,8 +1,18 @@
 [
     {
-        "name": "Kevin Schu"
+        "name": "Kevin Schu",
+        "_links": {
+            "company": {
+                "href": "/company.json"
+            }
+        }
     },
     {
-        "name": "Bilal Arslan"
+        "name": "Bilal Arslan",
+        "_links": {
+            "company": {
+                "href": "/company.json"
+            }
+        }
     }
 ]

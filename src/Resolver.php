@@ -87,10 +87,12 @@ class Resolver
                     if ($target !== 'self') {
                         if (is_array($link)) {
                             foreach ($link as $linkItem) {
-                                $this->resolveLink($resource, $resolved, $target, $linkItem, $links);
+                                $res = $this->resolveLink($resource, $resolved, $target, $linkItem, $links);
+                                $resource->_embedded->{$target}[] = $res;
                             }
                         } else {
-                            $this->resolveLink($resource, $resolved, $target, $link, $links);
+                            $res = $this->resolveLink($resource, $resolved, $target, $link, $links);
+                            $resource->_embedded->$target = $res;
                         }
                     }
                 }
@@ -104,11 +106,12 @@ class Resolver
      * @param $target
      * @param $link
      * @param $links
+     * @return object|array
      */
     private function resolveLink($resource, array $resolved, $target, $link, $links)
     {
         if (!isset($link->href)) {
-            return;
+            return null;
         }
         $tmp = $this->request($target, $link);
 
@@ -119,7 +122,7 @@ class Resolver
                 $tmp = $this->resolve($tmp, $resolved);
             }
         }
-        $resource->_embedded->$target = json_decode($tmp->getBody());
+        return json_decode($tmp->getBody());
     }
 
     /**

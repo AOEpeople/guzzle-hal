@@ -97,6 +97,17 @@ class Resolver
                     }
                 }
             }
+            if ($rel === 'embedded' || $rel === '_embedded') {
+                foreach ($links as $target => $embedded) {
+                    if (is_array($embedded)) {
+                        foreach ($embedded as $subEmbed) {
+                            $this->resolveResource($subEmbed, $resolved);
+                        }
+                    } else {
+                        $this->resolveResource($embedded, $resolved);
+                    }
+                }
+            }
         }
     }
 

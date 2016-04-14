@@ -18,6 +18,11 @@ class Resolver
     private $config = [];
 
     /**
+     * @var array
+     */
+    private $requestedLinks = [];
+
+    /**
      * @param Client $client
      * @param array $config
      */
@@ -75,6 +80,11 @@ class Resolver
         foreach ($resource as $rel => $links) {
             if ($rel === 'links' || $rel === '_links') {
                 foreach ($links as $target => $link) {
+                    if (in_array($link->href, $this->requestedLinks)) {
+                        continue;
+                    }
+                    $this->requestedLinks[] = $link->href;
+
                     if (!$this->isTargetResolvable($target)) {
                         continue;
                     }
